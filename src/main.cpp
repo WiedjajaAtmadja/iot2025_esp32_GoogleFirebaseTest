@@ -32,6 +32,7 @@ void setup()
 void loop()
 {
     Firebase.RTDB.setInt(&fbdo, "/data", millis());
+    Firebase.RTDB.pushInt(&fbdo, "/log", millis());
     digitalWrite(LED_PIN, HIGH);
     delay(1000);
     digitalWrite(LED_PIN, LOW);
