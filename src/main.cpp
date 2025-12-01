@@ -1,9 +1,13 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include "Firebase_ESP_Client.h"
+#include <DHT.h>
+
 #define FIREBASE_HOST "https://iot2025-demo-ca19a-default-rtdb.asia-southeast1.firebasedatabase.app/"
 #define FIREBASE_AUTH "bkm9lpbHNRr8bN5t3jEdY8HOjYKDWydmKntBfgxv"
 #define LED_PIN 21
+#define DHT_PIN 23
+#define DHT_TYPE DHT22
 
 // #define WIFI_SSID "CE–IOT"
 // #define WIFI_PASSWORD "CE-1OT@!"
@@ -14,15 +18,23 @@
 FirebaseData fbdo;
 FirebaseConfig fbConfig;
 FirebaseData fbdoStream;
+DHT dht(DHT_PIN, DHT_TYPE);
+
 void WifiConnect();
 void Firebase_Init(const String &streamPath);
 void onFirebaseStream(FirebaseStream data);
+void readDHT22();
 
 void setup()
 {
     pinMode(LED_PIN, OUTPUT);
     Serial.begin(115200);
     Serial.println("Booting...");
+    
+    // Initialize DHT22 sensor
+    dht.begin();
+    Serial.println("DHT22 sensor initialized");
+    
     WifiConnect();
     Serial.println("Connecting to Firebase...");
     Firebase_Init("cmd");
@@ -31,6 +43,8 @@ void setup()
 
 void loop()
 {
+    // Read DHT22 sensor
+    readDHT22();    
     Firebase.RTDB.setInt(&fbdo, "/data", millis());
     Firebase.RTDB.pushInt(&fbdo, "/log", millis());
     digitalWrite(LED_PIN, HIGH);
@@ -111,4 +125,32 @@ void WifiConnect()
   Serial.println("Connected to WiFi network");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+}
+
+void readDHT22()
+{
+  // Read humidity
+  float humidity = dht.readHumidity();
+  // Read temperature as Celsius
+  float temperature = dht.readTemperature();
+  
+  // Check if any reads failed
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Failed to read from DHT22 sensor!");
+    return;
+  }
+  
+  // Print values to Serial Monitor
+  Serial.println("========== DHT22 Sensor ==========");
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+  Serial.print("Humidity: ");
+  Serial.print(humidity);
+  Serial.println(" %");
+  Serial.println("==================================");
+  
+  // Send data to Firebase
+  Firebase.RTDB.pushFloat(&fbdo, "/sensor/temperature", temperature);
+  Firebase.RTDB.pushFloat(&fbdo, "/sensor/humidity", humidity);
 }
